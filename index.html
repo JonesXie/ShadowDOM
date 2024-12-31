@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- 使用自定义的search-box元素 -->
+    <search-box></search-box>
+  </body>
+  <script>
+    /**
+     * SearchBox类，继承自HTMLElement，用于创建自定义的搜索框元素
+     */
+    class SearchBox extends HTMLElement {
+      /**
+       * 构造函数，用于初始化自定义元素
+       */
+      constructor() {
+        super();
+        // 创建一个开放模式的shadow DOM
+        this.attachShadow({ mode: "open" });
+        // 将模板内容克隆并添加到shadow DOM中
+        this.shadowRoot.append(SearchBox.template.content.cloneNode(true));
+
+        // 获取输入框元素
+        this.input = this.shadowRoot.querySelector("#input");
+        // 获取左侧和右侧的slot元素
+        let leftSlot = this.shadowRoot.querySelector('slot[name="left"]');
+        let rightSlot = this.shadowRoot.querySelector('slot[name="right"]');
+
+        // 当输入框聚焦时，添加focused属性
+        this.input.onfocus = () => {
+          this.setAttribute("focused", "");
+        };
+        // 当输入框失焦时，移除focused属性
+        this.input.onblur = () => {
+          this.removeAttribute("focused");
+        };
+
+        // 左侧slot点击事件和输入框变化事件处理函数
+        leftSlot.onclick = this.input.onchange = (event) => {
+          event.stopPropagation();
+          if (this.disabled) return;
+          // 派发search事件，包含当前输入框的值
+          this.dispatchEvent(new CustomEvent("search", { detail: this.input.value }));
+        };
+
+        // 右侧slot点击事件处理函数
+        rightSlot.onclick = (event) => {
+          event.stopPropagation();
+          if (this.disabled) return;
+          // 派发clear事件，并在未阻止默认行为时清空输入框
+          let e = new CustomEvent("clear", { cancelable: true });
+          this.dispatchEvent(e);
+          if (!e.defaultPrevented) {
+            this.input.value = "";
+          }
+        };
+      }
+
+      /**
+       * 属性变化回调函数
+       * @param {string} name - 属性名
+       * @param {string} oldValue - 旧值
+       * @param {string} newValue - 新值
+       */
+      attributesChangedCallback(name, oldValue, newValue) {
+        // 根据属性名更新输入框的相应属性
+        if (name === "disabled") {
+          this.input.disabled = newValue !== null;
+        } else if (name === "placeholder") {
+          this.input.placeholder = newValue;
+        } else if (name === "size") {
+          this.input.size = newValue;
+        } else if (name === "value") {
+          this.input.value = newValue;
+        }
+      }
+
+      // 定义getter和setter方法
+      get placeholder() {
+        return this.getAttribute("placeholder");
+      }
+      get size() {
+        return this.getAttribute("size");
+      }
+      get value() {
+        return this.getAttribute("value");
+      }
+      get disabled() {
+        return this.hasAttribute("disabled");
+      }
+      get hidden() {
+        return this.hasAttribute("hidden");
+      }
+
+      set placeholder(value) {
+        this.setAttribute("placeholder", value);
+      }
+      set size(value) {
+        this.setAttribute("size", value);
+      }
+      set value(text) {
+        this.setAttribute("value", text);
+      }
+      set disabled(value) {
+        if (value) this.setAttribute("disabled", "");
+        else this.removeAttribute("disabled");
+      }
+      set hidden(value) {
+        if (value) this.setAttribute("hidden", "");
+        else this.removeAttribute("hidden");
+      }
+    }
+
+    // 定义需要观察的属性
+    SearchBox.observedAttributes = ["placeholder", "size", "value", "disabled"];
+
+    // 定义模板
+    SearchBox.template = document.createElement("template");
+    SearchBox.template.innerHTML = `
+      <style>
+        :host {
+          display: inline-block;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          padding: 5px
+        }
+        :host([hidden]){
+          display: none;
+        }
+        :host([disabled]){
+          opacity: 0.5;
+        }
+        :host([focused]){
+          box-shadow: 0 0 2px 2px #6ae;
+        }
+        input {
+          border-width: 0;
+          outline: none;
+          font: inherit;
+          background: inherit;
+        }
+        slot{
+          cursor: pointer;
+          user-select: none;
+        }
+      </style>
+      <div>
+        <slot name="left">\u{1f50d}</slot>
+        <input id="input" type="text" placeholder="Search..." />
+        <slot name="right">\u{2573}</slot>
+      </div>
+    `;
+    // 定义自定义元素
+    customElements.define("search-box", SearchBox);
+
+    // 监听search-box元素的search事件
+    document.querySelector("search-box").addEventListener("search", (event) => {
+      console.log("Search event triggered with value:", event.detail);
+    });
+
+    // 监听search-box元素的clear事件
+    document.querySelector("search-box").addEventListener("clear", (event) => {
+      console.log("Clear event triggered.");
+    });
+  </script>
+</html>
